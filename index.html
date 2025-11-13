@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yurt Yoklama Sistemi</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
+    .container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); padding: 30px; max-width: 400px; width: 100%; }
+    h1 { text-align: center; color: #667eea; margin-bottom: 10px; font-size: 24px; }
+    .subtitle { text-align: center; color: #888; font-size: 14px; margin-bottom: 30px; }
+    .user-info { text-align: center; margin-bottom: 20px; padding: 10px; background-color: #f0f4ff; border-radius: 10px; }
+    .user-info .welcome { font-weight: 600; color: #333; }
+    .user-info .email { font-size: 12px; color: #777; }
+    .btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; margin-top: 10px; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-sleep { background: linear-gradient(135deg, #FFA726 0%, #FB8C00 100%); }
+    .btn-sleep:hover { box-shadow: 0 10px 25px rgba(255, 167, 38, 0.3); }
+    .btn-admin { background: linear-gradient(135deg, #16a34a 0%, #059669 100%); margin-top: 18px; }
+    .btn-admin:hover { box-shadow: 0 10px 25px rgba(5,150,105,0.28); }
+    .status { margin-top: 20px; padding: 15px; border-radius: 10px; text-align: center; font-weight: 500; display: none; white-space: pre-line; line-height: 1.6; }
+    .status.success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+    .status.error { background: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+    .status.warning { background: #fff3cd; color: #856404; border: 2px solid #ffeaa7; }
+    .warning-box { background: #fff8e1; border-left: 4px solid #ff9800; padding: 12px; margin-bottom: 20px; border-radius: 5px; font-size: 13px; color: #e65100; }
+    .info-box { background: #e3f2fd; border-left: 4px solid #2196F3; padding: 12px; margin-bottom: 20px; border-radius: 5px; font-size: 13px; color: #0d47a1; }
+    .loading { display: none; text-align: center; margin-top: 15px; }
+    .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .time-badge { background: #2196F3; color: white; padding: 5px 10px; border-radius: 20px; font-size: 11px; display: inline-block; }
+    .divider { border-top: 2px dashed #e0e0e0; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🏠 Yurt Yoklama</h1>
+    <p class="subtitle">Guvenli Yoklama Sistemi</p>
+    
+    <div class="info-box">
+      💤 Uyku On-Kayit: 22:30 - 22:59<br>
+      📍 Normal Yoklama: 23:00 - 23:40<br>
+      🔒 Sadece yurt icinden verilebilir
+    </div>
+    
+    <div class="user-info" id="userInfo" style="display: none;">
+      <div class="welcome" id="welcomeMessage"></div>
+      <div class="email" id="userEmail"></div>
+    </div>
+    
+    <form id="uykuOnKayitForm">
+      <button type="submit" class="btn btn-sleep" id="uykuOnKayitBtn" disabled>
+        💤 Uykudayim (On-Kayit)
+      </button>
+    </form>
+    
+    <div class="divider"></div>
+    
+    <form id="yoklamaForm">
+      <button type="submit" class="btn" id="submitBtn" disabled>
+        📍 Yoklama Ver
+      </button>
+    </form>
+    
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <p style="margin-top: 10px; color: #667eea;">Kontrol ediliyor...</p>
+    </div>
+    
+    <div class="status" id="status"></div>
+    
+    <div style="text-align: center; margin-top: 15px;">
+      <span class="time-badge" id="currentTime">--:--</span>
+    </div>
+    <div style="margin-top: 24px; text-align: center;">
+      <!-- <a href="admin sayfası linki" class="btn btn-admin" id="adminBtn">Kat Sorumlusu Giriş</a> -->
+    </div>
+  </div>
+
+  <script>
+    const submitBtn = document.getElementById('submitBtn');
+    const uykuOnKayitBtn = document.getElementById('uykuOnKayitBtn');
+    const statusEl = document.getElementById('status');
+    const loadingEl = document.getElementById('loading');
+    const userInfoEl = document.getElementById('userInfo');
+    const welcomeMessageEl = document.getElementById('welcomeMessage');
+    const userEmailEl = document.getElementById('userEmail');
+
+    window.addEventListener('DOMContentLoaded', function() {
+      gosterMesaj('Kimlik dogrulanıyor, lutfen bekleyin...', 'warning');
+      
+      google.script.run
+        .withSuccessHandler(function(sonuc) {
+          if (sonuc.basari) {
+            welcomeMessageEl.textContent = 'Hos Geldin, ' + sonuc.adSoyad;
+            userEmailEl.textContent = sonuc.email;
+            userInfoEl.style.display = 'block';
+            submitBtn.disabled = false;
+            uykuOnKayitBtn.disabled = false;
+            gosterMesaj('Kimlik dogrulandi. Simdi kayit verebilirsiniz.', 'success');
+          } else {
+            gosterMesaj(sonuc.mesaj, 'error');
+            submitBtn.disabled = true;
+            uykuOnKayitBtn.disabled = true;
+          }
+        })
+        .withFailureHandler(function(error) {
+          gosterMesaj('Sunucuya baglanilamadi. Sayfayi yenileyin.\n\n' + error.message, 'error');
+          submitBtn.disabled = true;
+          uykuOnKayitBtn.disabled = true;
+        })
+        .getKullaniciBilgileri();
+    });
+
+    document.getElementById('uykuOnKayitForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      konumAlVeGonder('uyku');
+    });
+
+    document.getElementById('yoklamaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      konumAlVeGonder('yoklama');
+    });
+
+    function konumAlVeGonder(tip) {
+      loadingEl.style.display = 'block';
+      submitBtn.disabled = true;
+      uykuOnKayitBtn.disabled = true;
+      statusEl.style.display = 'none';
+
+      if (!navigator.geolocation) {
+        gosterMesaj('Tarayiciniz konum ozelligini desteklemiyor!', 'error');
+        loadingEl.style.display = 'none';
+        submitBtn.disabled = false;
+        uykuOnKayitBtn.disabled = false;
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        function(position) {
+          const enlem = position.coords.latitude;
+          const boylam = position.coords.longitude;
+          const cihazKimlik = getCihazKimlik();
+          const userAgent = navigator.userAgent;
+          const ekranGenislik = window.innerWidth;
+          const ekranYukseklik = window.innerHeight;
+          const dokunmatik = ('ontouchstart' in window);
+
+          const fonksiyon = tip === 'uyku' ? 'kaydetUykuOnKayit' : 'kaydetYoklama';
+
+          google.script.run
+            .withSuccessHandler(function(sonuc) {
+              loadingEl.style.display = 'none';
+              submitBtn.disabled = false;
+              uykuOnKayitBtn.disabled = false;
+              if (sonuc.basari) {
+                gosterMesaj(sonuc.mesaj, 'success');
+              } else {
+                gosterMesaj(sonuc.mesaj, 'error');
+              }
+            })
+            .withFailureHandler(function(error) {
+              loadingEl.style.display = 'none';
+              submitBtn.disabled = false;
+              uykuOnKayitBtn.disabled = false;
+              gosterMesaj('Baglanti hatasi: ' + error.message, 'error');
+            })
+            [fonksiyon](enlem, boylam, cihazKimlik, userAgent, ekranGenislik, ekranYukseklik, dokunmatik);
+        },
+        function(error) {
+          loadingEl.style.display = 'none';
+          submitBtn.disabled = false;
+          uykuOnKayitBtn.disabled = false;
+          let mesaj = 'Konum alinamadi!\n\n';
+          switch(error.code) {
+            case error.PERMISSION_DENIED: mesaj += 'Konum izni reddedildi. Lutfen tarayici ayarlarindan konum iznini acin.'; break;
+            case error.POSITION_UNAVAILABLE: mesaj += 'Konum bilgisi kullanilamiyor. GPS\'inizi kontrol edin.'; break;
+            case error.TIMEOUT: mesaj += 'Konum alinirken zaman asimi. Lutfen tekrar deneyin.'; break;
+            default: mesaj += 'Bilinmeyen hata.';
+          }
+          gosterMesaj(mesaj, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+
+    function gosterMesaj(mesaj, tip) {
+      statusEl.textContent = mesaj;
+      statusEl.className = 'status ' + tip;
+      statusEl.style.display = 'block';
+      if (tip === 'success') {
+        setTimeout(function() { statusEl.style.display = 'none'; }, 8000);
+      }
+    }
+    
+    function saatGuncelle() {
+      const simdi = new Date();
+      const saat = simdi.getHours().toString().padStart(2, '0');
+      const dakika = simdi.getMinutes().toString().padStart(2, '0');
+      document.getElementById('currentTime').textContent = saat + ':' + dakika;
+    }
+    setInterval(saatGuncelle, 1000);
+    saatGuncelle();
+    
+    function getCihazKimlik() {
+        const fingerprint = navigator.userAgent + navigator.platform + navigator.language + screen.width + 'x' + screen.height;
+        let hash = 0;
+        for (let i = 0; i < fingerprint.length; i++) {
+            const char = fingerprint.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(36);
+    }
+  </script>
+</body>
+</html>

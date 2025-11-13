@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kat Sorumlusu - Uyku Dogrulama</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .header { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    .header h1 { color: #667eea; font-size: 24px; margin-bottom: 5px; }
+    .header .subtitle { color: #888; font-size: 14px; }
+    .kat-sorumlusu-info { background: #e3f2fd; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #2196F3; }
+    .kat-sorumlusu-info .name { font-weight: 600; color: #0d47a1; }
+    .kat-sorumlusu-info .email { font-size: 12px; color: #1565c0; margin-top: 3px; }
+    .card { background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #f0f0f0; }
+    .card-header .name { font-size: 18px; font-weight: 600; color: #333; }
+    .card-header .time { font-size: 12px; color: #888; background: #f5f5f5; padding: 5px 10px; border-radius: 15px; }
+    .card-body { margin-bottom: 15px; }
+    .input-group { margin-bottom: 12px; }
+    .input-group label { display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 5px; }
+    .input-group input, .input-group textarea { width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit; }
+    .input-group input:focus, .input-group textarea:focus { outline: none; border-color: #667eea; }
+    .input-group textarea { resize: vertical; min-height: 60px; }
+    .btn-group { display: flex; gap: 10px; }
+    .btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-success { background: #4CAF50; color: white; }
+    .btn-success:hover { background: #45a049; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3); }
+    .btn-danger { background: #f44336; color: white; }
+    .btn-danger:hover { background: #da190b; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(244, 67, 54, 0.3); }
+    .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+    .loading { text-align: center; padding: 40px; color: white; font-size: 18px; }
+    .loading-spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 40px; color: white; }
+    .empty-state-icon { font-size: 60px; margin-bottom: 15px; }
+    .empty-state-text { font-size: 18px; font-weight: 500; }
+    .status-message { background: white; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; font-weight: 500; }
+    .status-message.success { background: #d4edda; color: #155724; border: 2px solid #c3e6cb; }
+    .status-message.error { background: #f8d7da; color: #721c24; border: 2px solid #f5c6cb; }
+    .refresh-btn { background: white; color: #667eea; border: 2px solid white; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; float: right; transition: all 0.2s; }
+    .refresh-btn:hover { background: #667eea; color: white; }
+    .badge { display: inline-block; background: #FFA726; color: white; padding: 5px 12px; border-radius: 15px; font-size: 12px; font-weight: 600; }
+    .debug-info { background: #fff3cd; border: 2px solid #ffc107; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; color: #856404; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛏️ Kat Sorumlusu - Uyku Dogrulama</h1>
+      <p class="subtitle">Uyku on-kaydi yapan ogrencileri dogrulayin</p>
+      <button class="refresh-btn" onclick="listeyiYenile()">🔄 Yenile</button>
+      <div class="kat-sorumlusu-info" id="katSorumlusuInfo" style="display: none;">
+        <div class="name" id="katSorumlusuName"></div>
+        <div class="email" id="katSorumlusuEmail"></div>
+      </div>
+    </div>
+
+    <div id="statusMessage"></div>
+    <div id="debugInfo" class="debug-info" style="display: none;"></div>
+    
+    <div id="loading" class="loading">
+      <div class="loading-spinner"></div>
+      <p>Yukleniyor...</p>
+    </div>
+
+    <div id="cardContainer"></div>
+
+    <div id="emptyState" class="empty-state" style="display: none;">
+      <div class="empty-state-icon">✅</div>
+      <div class="empty-state-text">Tum dogrulamalar tamamlandi!</div>
+      <p style="margin-top: 10px; font-size: 14px;">Dogrulama bekleyen ogrenci bulunmuyor.</p>
+    </div>
+  </div>
+
+  <script>
+    let bekleyenListesi = [];
+    let katSorumlusuAdi = '';
+
+    window.addEventListener('DOMContentLoaded', function() {
+      kimlikKontrol();
+    });
+
+    function kimlikKontrol() {
+      console.log('Kimlik kontrolu baslatiliyor...');
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('cardContainer').innerHTML = '';
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('debugInfo').style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(function(sonuc) {
+          console.log('Kat sorumlusu bilgileri:', sonuc);
+          
+          if (!sonuc) {
+            document.getElementById('loading').style.display = 'none';
+            gosterMesaj('Sunucudan gecersiz yanit alindi', 'error');
+            debugGoster('Sunucu null dondurdu');
+            return;
+          }
+          
+          if (sonuc.basari) {
+            document.getElementById('katSorumlusuName').textContent = sonuc.adSoyad;
+            document.getElementById('katSorumlusuEmail').textContent = sonuc.email;
+            document.getElementById('katSorumlusuInfo').style.display = 'block';
+            katSorumlusuAdi = sonuc.adSoyad;
+            listeyiYenile();
+          } else {
+            document.getElementById('loading').style.display = 'none';
+            gosterMesaj(sonuc.mesaj || 'Bilinmeyen hata', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Kimlik kontrolu hatasi:', error);
+          document.getElementById('loading').style.display = 'none';
+          gosterMesaj('Baglanti hatasi: ' + error.message, 'error');
+          debugGoster('Error: ' + error.message);
+        })
+        .getKatSorumlusuBilgileri();
+    }
+
+    function listeyiYenile() {
+      console.log('Liste yenileniyor...');
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('cardContainer').innerHTML = '';
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('statusMessage').innerHTML = '';
+      document.getElementById('debugInfo').style.display = 'none';
+
+      try {
+        google.script.run
+          .withSuccessHandler(function(sonuc) {
+            console.log('Ham sonuc:', sonuc);
+            console.log('Sonuc tipi:', typeof sonuc);
+            console.log('Sonuc stringified:', JSON.stringify(sonuc));
+            
+            document.getElementById('loading').style.display = 'none';
+            
+            if (sonuc === null || sonuc === undefined) {
+              gosterMesaj('Sunucudan bos yanit alindi', 'error');
+              debugGoster('Liste sonucu: ' + sonuc);
+              return;
+            }
+            
+            if (typeof sonuc !== 'object') {
+              gosterMesaj('Sunucudan gecersiz veri tipi: ' + typeof sonuc, 'error');
+              debugGoster('Veri tipi hatasi: ' + typeof sonuc);
+              return;
+            }
+            
+            if (sonuc.basari === true) {
+              bekleyenListesi = sonuc.liste || [];
+              katSorumlusuAdi = sonuc.katSorumlusuAdi || '';
+              
+              debugGoster('Basarili! Bekleyen: ' + bekleyenListesi.length);
+              
+              if (bekleyenListesi.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+              } else {
+                bekleyenListesi.forEach(function(ogrenci) {
+                  olusturKart(ogrenci);
+                });
+              }
+            } else {
+              const mesaj = sonuc.mesaj || 'Bilinmeyen hata';
+              gosterMesaj(mesaj, 'error');
+              debugGoster('Backend hatasi: ' + mesaj);
+            }
+          })
+          .withFailureHandler(function(error) {
+            console.error('Liste yenileme hatasi:', error);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+            
+            document.getElementById('loading').style.display = 'none';
+            gosterMesaj('Baglanti hatasi: ' + error.message, 'error');
+            debugGoster('Network error: ' + error.message);
+          })
+          .getDogrulamaBekleyenler();
+      } catch (e) {
+        console.error('Kritik hata:', e);
+        document.getElementById('loading').style.display = 'none';
+        gosterMesaj('JavaScript hatasi: ' + e.message, 'error');
+        debugGoster('JS Exception: ' + e.message);
+      }
+    }
+
+    function olusturKart(ogrenci) {
+      console.log('Kart olusturuluyor:', ogrenci);
+      
+      const safeEmail = (ogrenci.email || '').replace(/[^a-zA-Z0-9@._-]/g, '_');
+      
+      const cardHtml = `
+        <div class="card" id="card-${safeEmail}">
+          <div class="card-header">
+            <div class="name">${ogrenci.adSoyad || 'Bilinmeyen'}</div>
+            <div class="time">⏰ ${ogrenci.saat || '--:--'}</div>
+          </div>
+          <div class="card-body">
+            <div class="input-group">
+              <label>Oda Numarasi <span class="badge">ZORUNLU</span></label>
+              <input type="text" id="odaNo-${safeEmail}" placeholder="Ornek: 403" value="${ogrenci.odaNo || ''}">
+            </div>
+            <div class="input-group">
+              <label>Not (Istege Bagli)</label>
+              <textarea id="not-${safeEmail}" placeholder="Ornek: Derin uykuda, rahatsiz edilmedi">${ogrenci.not || ''}</textarea>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-success" onclick="dogrula('${ogrenci.email}', 'dogrulandi')">
+              ✅ Dogrula (Yurtta)
+            </button>
+            <button class="btn btn-danger" onclick="dogrula('${ogrenci.email}', 'gecersiz')">
+              ❌ Gecersiz (Bulunamadi)
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('cardContainer').insertAdjacentHTML('beforeend', cardHtml);
+    }
+
+    function dogrula(email, karar) {
+      console.log('Dogrulama:', email, karar);
+      
+      const safeEmail = email.replace(/[^a-zA-Z0-9@._-]/g, '_');
+      const odaNo = document.getElementById('odaNo-' + safeEmail).value.trim();
+      const not = document.getElementById('not-' + safeEmail).value.trim();
+
+      if (!odaNo) {
+        alert('Oda numarasi zorunludur!');
+        return;
+      }
+
+      const card = document.getElementById('card-' + safeEmail);
+      if (!card) {
+        console.error('Kart bulunamadi:', safeEmail);
+        return;
+      }
+      
+      const buttons = card.querySelectorAll('button');
+      buttons.forEach(btn => btn.disabled = true);
+
+      google.script.run
+        .withSuccessHandler(function(sonuc) {
+          console.log('Dogrulama sonucu:', sonuc);
+          
+          if (!sonuc) {
+            buttons.forEach(btn => btn.disabled = false);
+            gosterMesaj('Sunucudan gecersiz yanit alindi', 'error');
+            return;
+          }
+          
+          if (sonuc.basari) {
+            card.style.opacity = '0.5';
+            card.style.transform = 'scale(0.95)';
+            setTimeout(function() {
+              card.remove();
+              
+              const kalanKartlar = document.querySelectorAll('.card');
+              if (kalanKartlar.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+              }
+              
+              gosterMesaj(sonuc.mesaj || 'Dogrulama kaydedildi', 'success');
+            }, 300);
+          } else {
+            buttons.forEach(btn => btn.disabled = false);
+            gosterMesaj(sonuc.mesaj || 'Dogrulama basarisiz', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Dogrulama hatasi:', error);
+          buttons.forEach(btn => btn.disabled = false);
+          gosterMesaj('Baglanti hatasi: ' + error.message, 'error');
+        })
+        .kaydetDogrulama(email, karar, odaNo, not);
+    }
+
+    function gosterMesaj(mesaj, tip) {
+      const messageDiv = document.getElementById('statusMessage');
+      messageDiv.innerHTML = '<div class="status-message ' + tip + '">' + mesaj + '</div>';
+      
+      if (tip === 'success') {
+        setTimeout(function() {
+          messageDiv.innerHTML = '';
+        }, 5000);
+      }
+    }
+    
+    function debugGoster(mesaj) {
+      const debugDiv = document.getElementById('debugInfo');
+      debugDiv.textContent = '🐛 Debug: ' + mesaj;
+      debugDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
